@@ -16,7 +16,7 @@
   "contributes": {
     "commands": [
       {
-        "command": "llm-extension.analyzeCode",
+        "command": "local-llm-request.analyzeCode",
         "title": "analyze Scripting Code"
       }
     ]

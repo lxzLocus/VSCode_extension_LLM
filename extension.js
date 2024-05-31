@@ -18,27 +18,10 @@ const axios = require('axios');
 async function activate(context) {
 	/*VSCode API*/
 	const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
-	button.command = 'llm-extension.analyzeCode';
+	button.command = 'local-llm-request.analyzeCode';
 	button.text = 'Text Generation API';
 	context.subscriptions.push(button);
 	button.show();
-
-
-	/*
-	ドキュメント保存
-	LLMへコード学習
-	*/
-    const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document) => {
-		const filePath = document.fileName;
-        console.log(`Document saved: ${filePath}`);
-
-		try{
-
-		}catch(e){
-			console.error('Error:', error.message);
-			vscode.window.showErrorMessage('An error occurred while creating the file.');
-		}
-	});
 
 
 	/*
@@ -46,7 +29,7 @@ async function activate(context) {
 	コードの変更をもとに
 	コード修正案
 	*/
-	const disposable = vscode.commands.registerCommand('llm-extension.analyzeCode', async () => {
+	const disposable = vscode.commands.registerCommand('local-llm-request.analyzeCode', async () => {
 
 		const activeTextEditor = await vscode.window.activeTextEditor;
 
@@ -54,12 +37,14 @@ async function activate(context) {
 			// アクティブなテキストエディタのファイルURIを取得
 			const fileUri = activeTextEditor.document.uri;
 			const filePath = fileUri.fsPath;
+			// ファイルの拡張子を取得
+            const ext = path.extname(filePath);
 			console.log('Get Active Text Editor File');
 
 
 			try {
 				// ファイル名とディレクトリパスを設定
-				const fileName = 'Patched_Code.js'; // あらかじめ決めたファイル名
+				const fileName = 'Patched_Code${ext}'; // あらかじめ決めたファイル名
 				const currentFilePath = vscode.window.activeTextEditor.document.fileName;
 				const directoryPath = path.dirname(currentFilePath);
 				let filePath_w = path.join(directoryPath, fileName);
@@ -69,14 +54,17 @@ async function activate(context) {
 				console.log('API Request');
 
 				//LLM呼び出し
-				const res = await api_request(filePath);
+				const res = await api_request(filePath, 1);
 
+				// ファイルを作成して書き込み
+				fs.writeFileSync(filePath_w, res);
+				
 
 				// エディタにファイルを表示
-				const document = await vscode.workspace.openTextDocument(filePath_w);
+				const patched_Document = await vscode.workspace.openTextDocument(filePath_w);
 
-				await vscode.window.showTextDocument(document);
-				
+				await vscode.window.showTextDocument(patched_Document);
+				//Diff
 				getDiff_uri(filePath, filePath_w);
 
 			} catch (error) {
@@ -89,6 +77,40 @@ async function activate(context) {
 		}
 
 	});
+
+
+	/*
+	ドキュメント保存
+	LLMへコード学習
+	*/
+    const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document) => {
+		const activeTextEditor = await vscode.window.activeTextEditor;
+
+		if (activeTextEditor) {
+			try{
+				// アクティブなテキストエディタのファイルURIを取得
+				const fileUri = activeTextEditor.document.uri;
+				const filePath = fileUri.fsPath;
+
+				const res = await api_request(filePath, 0);
+
+
+				/*
+				res解析
+				console出力
+				*/
+
+			} catch (error) {
+				console.error('Error:', error.message);
+				vscode.window.showErrorMessage('An error occurred while creating the file.');
+			}
+
+		} else {
+			console.error('アクティブなテキストエディタがありません。');
+		}
+	});
+
+
 
 
 	context.subscriptions.push(disposable);
@@ -115,29 +137,35 @@ function getDiff_uri(file1, file2) {
 	vscode.commands.executeCommand('vscode.diff', uri1, uri2);
 }
 
-async function api_request(filePath) {
-
-	let code_a = readFileAndStore(filePath);
+async function api_request(filePath, mode) {
 
 	const endpoint = '/v1/completions';
+	let prompt = '';
+
+	/*コードの文字列化*/
+	let code_a = readFileAndStore(filePath);
 
 	//質問文
 	const url = `http://127.0.0.1:5000${endpoint}`;
 
-	const prompt = `#Order\n
-	Apply exception handling to "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
-	\n
-	#Code A\n
-	${code_a}\n
-	#Code B\n`
+	if(mode === '0'){
+		/*学習プロンプト*/
+		prompt = `#Order\n
+		Send the code as "#Code_A" and output it as "#Response". Learn to change the code. Output '200' if the code has been learned. If it fails to learn, output '400' and a comment after the newline code.\n
+		\n
+		#Code_A\n
+		${code_a}\n
+		#Response\n`;
 
-
-	const prompt_study = `#Order\n
-	Send the code as "#Code_A" and output it as "#Response". Learn to change the code. Output '200' if the code has been learned. If it fails to learn, output '400' and a comment after the newline code.\n
-	\n
-	#Code_A\n
-	${code_a}\n
-	#Response\n`
+	}else if(mode === '1'){
+		/*コード修正プロンプト*/
+		prompt = `#Order\n
+		Apply exception handling to "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
+		\n
+		#Code A\n
+		${code_a}\n
+		#Code B\n`;
+	}
 
 	const payload = {
 		'prompt': prompt,
@@ -184,6 +212,7 @@ async function api_request(filePath) {
 	};
 
 	try {
+		// @ts-ignore
 		const response = await axios.post(url, payload, config);
 
 		if(response.status === 200){
