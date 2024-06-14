@@ -44,11 +44,13 @@ async function activate(context) {
 
 			try {
 				// ファイル名とディレクトリパスを設定
-				const fileName = 'Patched_Code${ext}'; // あらかじめ決めたファイル名
+				const fileName = `Patched_Code${ext}`; // あらかじめ決めたファイル名
 				const currentFilePath = vscode.window.activeTextEditor.document.fileName;
 				const directoryPath = path.dirname(currentFilePath);
 				let filePath_w = path.join(directoryPath, fileName);
 
+
+				vscode.window.showInformationMessage('コード修正' );
 
 				vscode.window.showInformationMessage('API Requesting...');	
 				console.log('API Request');
@@ -91,6 +93,8 @@ async function activate(context) {
 				// アクティブなテキストエディタのファイルURIを取得
 				const fileUri = activeTextEditor.document.uri;
 				const filePath = fileUri.fsPath;
+
+				vscode.window.showInformationMessage('コード学習' );
 
 				const res = await api_request(filePath, 0);
 
@@ -147,9 +151,9 @@ async function api_request(filePath, mode) {
 	let code_a = readFileAndStore(filePath);
 
 	//質問文
-	const url = `http://127.0.0.1:5000${endpoint}`;
+	const url = `http://192.168.10.30:5000${endpoint}`;
 
-	if(mode === '0'){
+	if(mode === 0){
 		/*学習プロンプト*/
 		prompt = `#Order\n
 		Send the code as "#Code_A" and output it as "#Response". Learn to change the code. Output '200' if the code has been learned. If it fails to learn, output '400' and a comment after the newline code.\n
@@ -158,7 +162,7 @@ async function api_request(filePath, mode) {
 		${code_a}\n
 		#Response\n`;
 
-	}else if(mode === '1'){
+	}else if(mode === 1){
 		/*コード修正プロンプト*/
 		prompt = `#Order\n
 		Apply exception handling to "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
