@@ -112,8 +112,9 @@ async function activate(context) {
 
 
 
-
+	//オブジェクトを subscriptions に追加
 	context.subscriptions.push(disposable);
+	context.subscriptions.push(onSaveDisposable);
 }
 
 // This method is called when your extension is deactivated
