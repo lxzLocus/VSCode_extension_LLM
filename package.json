@@ -16,7 +16,11 @@
   "contributes": {
     "commands": [
       {
-        "command": "local-llm-request.analyzeCode",
+        "command": "local-llm-recommend.analyzeCode",
+        "title": "analyze Scripting Code"
+      },
+       {
+        "command": "local-llm-fix.analyzeCode",
         "title": "analyze Scripting Code"
       }
     ]

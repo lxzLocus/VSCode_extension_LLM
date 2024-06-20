@@ -17,11 +17,17 @@ const axios = require('axios');
  */
 async function activate(context) {
 	/*VSCode API*/
-	const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
-	button.command = 'local-llm-request.analyzeCode';
-	button.text = 'Text Generation API';
-	context.subscriptions.push(button);
-	button.show();
+	const button_recomm = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
+	button_recomm.command = 'local-llm-recommend.analyzeCode';
+	button_recomm.text = 'Fix Recomm';
+	context.subscriptions.push(button_recomm);
+	button_recomm.show();
+
+	const button_fix = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
+	button_fix.command = 'local-llm-fix.analyzeCode';
+	button_fix.text = 'Fix Code';
+	context.subscriptions.push(button_fix);
+	button_fix.show();
 
 
 	/*
@@ -29,7 +35,7 @@ async function activate(context) {
 	コードの変更をもとに
 	コード修正案
 	*/
-	const disposable = vscode.commands.registerCommand('local-llm-request.analyzeCode', async () => {
+	const recommendDisposable = vscode.commands.registerCommand('local-llm-recommend.analyzeCode', async () => {
 
 		const activeTextEditor = await vscode.window.activeTextEditor;
 
@@ -79,7 +85,62 @@ async function activate(context) {
 		}
 
 	});
+	
+	/*
+	LLM呼び出し
+	コードの変更をもとに
+	コード修正案
+	*/
+	const fixDisposable = vscode.commands.registerCommand('local-llm-fix.analyzeCode', async () => {
 
+		const activeTextEditor = await vscode.window.activeTextEditor;
+
+		if (activeTextEditor) {
+			// アクティブなテキストエディタのファイルURIを取得
+			const fileUri = activeTextEditor.document.uri;
+			const filePath = fileUri.fsPath;
+			// ファイルの拡張子を取得
+            const ext = path.extname(filePath);
+			console.log('Get Active Text Editor File');
+
+
+			try {
+				// ファイル名とディレクトリパスを設定
+				const fileName = `Patched_Code${ext}`; // あらかじめ決めたファイル名
+				const currentFilePath = vscode.window.activeTextEditor.document.fileName;
+				const directoryPath = path.dirname(currentFilePath);
+				let filePath_w = path.join(directoryPath, fileName);
+
+
+				vscode.window.showInformationMessage('コード修正' );
+
+				vscode.window.showInformationMessage('API Requesting...');	
+				console.log('API Request');
+
+				//LLM呼び出し
+				const res = await api_request(filePath, 2);
+
+				// ファイルを作成して書き込み
+				fs.writeFileSync(filePath_w, res);
+				
+
+				// エディタにファイルを表示
+				const patched_Document = await vscode.workspace.openTextDocument(filePath_w);
+
+				await vscode.window.showTextDocument(patched_Document);
+				//Diff
+				getDiff_uri(filePath, filePath_w);
+
+			} catch (error) {
+				console.error('Error:', error.message);
+				vscode.window.showErrorMessage('An error occurred while creating the file.');
+			}
+
+		} else {
+			console.error('アクティブなテキストエディタがありません。');
+		}
+
+	});
 
 	/*
 	ドキュメント保存
@@ -116,8 +177,14 @@ async function activate(context) {
 
 
 
+
+
+
+
+
 	//オブジェクトを subscriptions に追加
-	context.subscriptions.push(disposable);
+	context.subscriptions.push(recommendDisposable);
+	context.subscriptions.push(fixDisposable);
 	context.subscriptions.push(onSaveDisposable);
 }
 
@@ -164,6 +231,14 @@ async function api_request(filePath, mode) {
 
 	}else if(mode === 1){
 		/*コード修正プロンプト*/
+		prompt = `#Order\n
+		Apply exception handling to "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
+		\n
+		#Code A\n
+		${code_a}\n
+		#Code B\n`;
+	}else if(mode === 2){
+		/*エラー修正プロンプト*/
 		prompt = `#Order\n
 		Apply exception handling to "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
 		\n
