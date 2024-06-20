@@ -7,6 +7,7 @@ const fs = require('fs');
 const readFileSync = promisify(fs.readFileSync);
 const path = require('path');
 const axios = require('axios');
+const { error } = require('console');
 
 
 // This method is called when your extension is activated
@@ -17,11 +18,11 @@ const axios = require('axios');
  */
 async function activate(context) {
 	/*VSCode API*/
-	const button_recomm = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
-	button_recomm.command = 'local-llm-recommend.analyzeCode';
-	button_recomm.text = 'Fix Recomm';
-	context.subscriptions.push(button_recomm);
-	button_recomm.show();
+	const button_recom = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
+	button_recom.command = 'local-llm-recommend.analyzeCode';
+	button_recom.text = 'Fix Recom';
+	context.subscriptions.push(button_recom);
+	button_recom.show();
 
 	const button_fix = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1);
 	button_fix.command = 'local-llm-fix.analyzeCode';
@@ -88,7 +89,7 @@ async function activate(context) {
 	
 	/*
 	LLM呼び出し
-	コードの変更をもとに
+	エディタのエラーをもとに
 	コード修正案
 	*/
 	const fixDisposable = vscode.commands.registerCommand('local-llm-fix.analyzeCode', async () => {
@@ -186,6 +187,7 @@ async function activate(context) {
 	context.subscriptions.push(recommendDisposable);
 	context.subscriptions.push(fixDisposable);
 	context.subscriptions.push(onSaveDisposable);
+	
 }
 
 // This method is called when your extension is deactivated
@@ -238,18 +240,24 @@ async function api_request(filePath, mode) {
 		${code_a}\n
 		#Code B\n`;
 	}else if(mode === 2){
+
+		/*エラー情報の取得*/
+		let errorInfo = await errorEvent(filePath);
+
 		/*エラー修正プロンプト*/
 		prompt = `#Order\n
-		Apply exception handling to "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
+		Fix the exception in "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
 		\n
 		#Code A\n
 		${code_a}\n
+		#Code_A_ErrorInfo\n
+		${errorInfo}\n
 		#Code B\n`;
 	}
 
 	const payload = {
 		'prompt': prompt,
-		'max_tokens': 1024,
+		'max_tokens': 4096,
 		'temperature': 0.7,
 		'temperature_last': false,
 		'dynamic_temperature': false,
@@ -330,3 +338,24 @@ function readFileAndStore(filePath) {
 		console.error('ファイルの読み込みエラー:', error);
 	}
 }
+
+
+async function errorEvent(filePath){
+    const uri = vscode.Uri.file(filePath);
+    const diagnostics = vscode.languages.getDiagnostics(uri);
+
+    // エラーメッセージ、行、列を格納する配列
+    let errorInfo = diagnostics.map(diagnostic => ({
+        message: diagnostic.message,
+        line: diagnostic.range.start.line,
+        column: diagnostic.range.start.character
+    }));
+
+	    // 配列を文字列に展開する
+    let errorInfoString = errorInfo.map(error => {
+        return `Message: ${error.message}, Line: ${error.line}, Column: ${error.column}`;
+    }).join('\n');
+
+    return errorInfoString;
+}
+
