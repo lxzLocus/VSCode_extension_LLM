@@ -32,6 +32,7 @@ async function activate(context) {
 
 
 	/*
+	Mode 1
 	LLM呼び出し
 	コードの変更をもとに
 	コード修正案
@@ -57,7 +58,7 @@ async function activate(context) {
 				let filePath_w = path.join(directoryPath, fileName);
 
 
-				vscode.window.showInformationMessage('コード修正' );
+				vscode.window.showInformationMessage('Mode : 1' );
 
 				vscode.window.showInformationMessage('API Requesting...');	
 				console.log('API Request');
@@ -88,6 +89,7 @@ async function activate(context) {
 	});
 	
 	/*
+	Mode 2
 	LLM呼び出し
 	エディタのエラーをもとに
 	コード修正案
@@ -113,7 +115,7 @@ async function activate(context) {
 				let filePath_w = path.join(directoryPath, fileName);
 
 
-				vscode.window.showInformationMessage('コード修正' );
+				vscode.window.showInformationMessage('Mode : 2' );
 
 				vscode.window.showInformationMessage('API Requesting...');	
 				console.log('API Request');
@@ -144,6 +146,7 @@ async function activate(context) {
 	});
 
 	/*
+	Mode 0
 	ドキュメント保存
 	LLMへコード学習
 	*/
@@ -156,7 +159,7 @@ async function activate(context) {
 				const fileUri = activeTextEditor.document.uri;
 				const filePath = fileUri.fsPath;
 
-				vscode.window.showInformationMessage('コード学習' );
+				vscode.window.showInformationMessage('Mode : 0' );
 
 				const res = await api_request(filePath, 0);
 
@@ -233,6 +236,10 @@ async function api_request(filePath, mode) {
 
 	}else if(mode === 1){
 		/*コード修正プロンプト*/
+		/*
+		未実装
+		completions エンドポイント，チャット履歴残らない
+		*/
 		prompt = `#Order\n
 		Apply exception handling to "#Code A" and output it as "#Code B". Do not output text in the output result, only the program code\n
 		\n
