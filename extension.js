@@ -52,7 +52,7 @@ async function activate(context) {
 
 			try {
 				// ファイル名とディレクトリパスを設定
-				const fileName = `Patched_Code${ext}`; // あらかじめ決めたファイル名
+				const fileName = `Patched_Code.${ext}`; // あらかじめ決めたファイル名
 				const currentFilePath = vscode.window.activeTextEditor.document.fileName;
 				const directoryPath = path.dirname(currentFilePath);
 				let filePath_w = path.join(directoryPath, fileName);
@@ -109,7 +109,7 @@ async function activate(context) {
 
 			try {
 				// ファイル名とディレクトリパスを設定
-				const fileName = `Patched_Code${ext}`; // あらかじめ決めたファイル名
+				const fileName = `Patched_Code.${ext}`; // あらかじめ決めたファイル名
 				const currentFilePath = vscode.window.activeTextEditor.document.fileName;
 				const directoryPath = path.dirname(currentFilePath);
 				let filePath_w = path.join(directoryPath, fileName);
